@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EOD Recap Generator</title>
+    <!-- Use Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container p-4 sm:p-8">
+        <!-- Application Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-800">End of Day Recap Generator</h1>
+            <p class="text-gray-600 mt-2">Enter your daily activity details to generate a professional, concise summary.</p>
+        </header>
+
+        <!-- Input and Output Section -->
+        <main class="bg-white p-6 sm:p-8 rounded-lg shadow-xl border border-gray-200">
+            <div class="space-y-6">
+                <!-- Data Input Fields -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label for="storesSeen" class="block text-sm font-medium text-gray-700 mb-1">Stores Seen</label>
+                        <input type="number" id="storesSeen" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., 5">
+                    </div>
+                    <div>
+                        <label for="storesInventory" class="block text-sm font-medium text-gray-700 mb-1">Stores with Inventory</label>
+                        <input type="number" id="storesInventory" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., 3">
+                    </div>
+                    <div>
+                        <label for="storesSales" class="block text-sm font-medium text-gray-700 mb-1">Stores with Sales</label>
+                        <input type="number" id="storesSales" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., 2">
+                    </div>
+                </div>
+
+                <!-- Narrative Input Area -->
+                <div>
+                    <label for="daySummary" class="block text-sm font-medium text-gray-700 mb-1">Describe your day:</label>
+                    <textarea id="daySummary" rows="6" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., 'Met with store manager at Store A and discussed Q2 goals. Found a new opportunity to place product X at the front of Store B. Helped restock shelves at Store C but noticed a challenge with a key competitor's display.'"></textarea>
+                </div>
+
+                <!-- Generate Button -->
+                <button id="generateBtn" class="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    Generate Recap
+                </button>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div id="loading" class="loading mt-8">
+                <div class="flex items-center justify-center space-x-2">
+                    <div class="w-4 h-4 rounded-full animate-bounce bg-blue-600"></div>
+                    <div class="w-4 h-4 rounded-full animate-bounce bg-blue-600 animation-delay-200"></div>
+                    <div class="w-4 h-4 rounded-full animate-bounce bg-blue-600 animation-delay-400"></div>
+                </div>
+                <p class="mt-2 text-gray-500">Generating your summary...</p>
+            </div>
+
+            <!-- Output Display Area -->
+            <div id="output" class="mt-8 p-6 bg-gray-50 rounded-lg border border-gray-200" style="display: none;">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">EOD Recap</h2>
+                <div id="recapContent" class="prose max-w-none text-gray-700 leading-relaxed"></div>
+            </div>
+            
+            <!-- Message Box for Alerts (Replaces alert()) -->
+            <div id="messageBox" class="mt-4 p-4 rounded-lg text-sm text-center" style="display:none;"></div>
+        </main>
+    </div>
+
+    <script>
+        // DOM element references
+        const daySummaryInput = document.getElementById('daySummary');
+        const storesSeenInput = document.getElementById('storesSeen');
+        const storesInventoryInput = document.getElementById('storesInventory');
+        const storesSalesInput = document.getElementById('storesSales');
+        const generateBtn = document.getElementById('generateBtn');
+        const loadingDiv = document.getElementById('loading');
+        const outputDiv = document.getElementById('output');
+        const recapContentDiv = document.getElementById('recapContent');
+        const messageBox = document.getElementById('messageBox');
+
+        // Function to show a custom message
+        function showMessage(text, type = 'error') {
+            messageBox.textContent = text;
+            if (type === 'error') {
+                messageBox.className = 'mt-4 p-4 rounded-lg text-sm text-center bg-red-100 text-red-700';
+            } else {
+                messageBox.className = 'mt-4 p-4 rounded-lg text-sm text-center bg-green-100 text-green-700';
+            }
+            messageBox.style.display = 'block';
+        }
+
+        // Function to hide the message box
+        function hideMessage() {
+            messageBox.style.display = 'none';
+        }
+
+        // Event listener for the generate button
+        generateBtn.addEventListener('click', async () => {
+            const daySummary = daySummaryInput.value.trim();
+            const storesSeen = storesSeenInput.value.trim();
+            const storesInventory = storesInventoryInput.value.trim();
+            const storesSales = storesSalesInput.value.trim();
+
+            // Validate inputs
+            if (!daySummary) {
+                showMessage('Please describe your day before generating the recap.');
+                return;
+            }
+
+            hideMessage();
+            outputDiv.style.display = 'none';
+            loadingDiv.style.display = 'block';
+
+            // Construct the complete, detailed prompt for the LLM
+            const prompt = `Create a quick, simple, and professional summary of the following information into short, concise bullet points. The final output must be in the exact "EOD Format" specified below, highlighting overall wins and overall challenges. At the end of the synopsis, add key next steps or follow-up remarks.
+
+EOD Format:
+# of Stores Seen
+# of stores with Inventory
+# of stores with Sales
+
+Overall Win
+- [Response here in bullet points]
+
+Overall Challenge
+- [Response here in bullet points]
+
+Key Next Steps
+- [Response here in bullet points]
+
+Information to summarize:
+- # of Stores Seen: ${storesSeen || 'Not provided'}
+- # of stores with Inventory: ${storesInventory || 'Not provided'}
+- # of stores with Sales: ${storesSales || 'Not provided'}
+- Day's activities and insights: ${daySummary}`;
+
+            let retryCount = 0;
+            const maxRetries = 3;
+            const delay = 1000; // 1 second
+
+            // Function to handle the API call with exponential backoff
+            const callApi = async () => {
+                try {
+                    const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                    const payload = { contents: chatHistory };
+                    const apiKey = "";
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API call failed with status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        recapContentDiv.innerHTML = text.replace(/\n/g, '<br>');
+                        outputDiv.style.display = 'block';
+                    } else {
+                        throw new Error("Invalid response from API. Please try again.");
+                    }
+                } catch (error) {
+                    if (retryCount < maxRetries) {
+                        retryCount++;
+                        setTimeout(callApi, delay * Math.pow(2, retryCount - 1));
+                    } else {
+                        console.error('Error generating recap:', error);
+                        showMessage(`Failed to generate recap after ${maxRetries} retries. Please try again later.`);
+                    }
+                } finally {
+                    loadingDiv.style.display = 'none';
+                }
+            };
+
+            await callApi();
+        });
+    </script>
+</body>
+</html>
